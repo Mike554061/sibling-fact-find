@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sibling Revelry — Delivery Route Fact-Find</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<style>
+  :root{
+    --brand:#c8102e;        /* Sibling Revelry red */
+    --brand-dark:#8f0b20;
+    --ink:#1a1a1c;
+    --ink-soft:#55555b;
+    --line:#e5e5ea;
+    --bg:#f6f6f8;
+    --card:#ffffff;
+    --accent:#0f766e;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.05);
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  header{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  header .title{font-size:20px;font-weight:700;letter-spacing:.2px}
+  header .title small{display:block;font-size:12px;font-weight:500;opacity:.85;letter-spacing:.3px;margin-top:2px}
+  header .byline{font-size:12px;opacity:.9;text-align:right}
+  .wrap{max-width:1400px;margin:0 auto;padding:18px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+  .stat .n{font-size:26px;font-weight:800;line-height:1;color:var(--brand)}
+  .stat .l{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-soft);margin-top:6px;font-weight:600}
+  .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start}
+  @media(max-width:1050px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .panel .head{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .panel .head h2{margin:0;font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-soft)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:7px 12px;border-radius:8px;font-weight:600;font-size:13px;transition:.12s}
+  button:hover{border-color:var(--brand);color:var(--brand)}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  button.primary:hover{background:var(--brand-dark);color:#fff}
+  button.ghost{background:transparent;border-color:transparent;color:var(--ink-soft)}
+  #map{height:420px;width:100%}
+  .maprow{position:relative}
+  .tablewrap{overflow-x:auto;max-height:520px;overflow-y:auto}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:820px}
+  th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{position:sticky;top:0;background:#fafafc;z-index:2;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-soft);font-weight:700}
+  td input,td select{width:100%;border:1px solid transparent;background:transparent;padding:5px 6px;border-radius:6px;font:inherit;color:var(--ink)}
+  td input:focus,td select:focus{outline:none;border-color:var(--brand);background:#fff}
+  td.addr input{min-width:170px}
+  td.name input{min-width:150px;font-weight:600}
+  tr.origin{background:#fff7f8}
+  tr.origin td.name input{color:var(--brand)}
+  .pin{font-size:11px;font-weight:700;color:#fff;background:var(--brand);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+  tr.origin .pin{background:var(--ink)}
+  .del{color:#c00;border:none;background:none;font-size:16px;line-height:1;padding:2px 6px;cursor:pointer;opacity:.5}
+  .del:hover{opacity:1}
+  .geo-ok{color:var(--accent);font-size:11px}
+  .geo-bad{color:#c48a00;font-size:11px;cursor:pointer;text-decoration:underline}
+  .geo-wait{color:var(--ink-soft);font-size:11px}
+  .days{margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .day{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .day h3{margin:0;padding:10px 14px;background:#fafafc;border-bottom:1px solid var(--line);font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .day h3 .meta{font-size:11px;color:var(--ink-soft);font-weight:600}
+  .day ol{margin:0;padding:8px 8px 10px 30px;font-size:12.5px}
+  .day li{margin:3px 0}
+  .day li .ld{color:var(--ink-soft);font-size:11px}
+  .day.empty h3{color:var(--ink-soft)}
+  .day.empty .none{padding:12px 14px;color:var(--ink-soft);font-size:12px}
+  .legend{padding:10px 16px;font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line);background:#fafafc}
+  .note{font-size:12px;color:var(--ink-soft);margin:14px 2px 0}
+  .badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 6px;border-radius:5px;margin-left:6px}
+  .badge.on{background:#eef6f5;color:var(--accent)}
+  .badge.off{background:#f3eefb;color:#6b3fa0}
+  .maplibregl-popup-content{font:13px/1.4 -apple-system,sans-serif;padding:8px 12px;border-radius:8px}
+  .maplibregl-popup-content b{color:var(--brand)}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">Sibling Revelry Brewing — Delivery Route Fact-Find
+    <small>Mapping your current & potential delivery footprint · Westlake, OH</small>
+  </div>
+  <div class="byline">Prepared for the Sibling Revelry team<br>Discovery session · a working fit assessment</div>
+</header>
+
+<div class="wrap">
+
+  <div class="stats" id="stats"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="head">
+        <h2>Delivery Stops — add, edit, explore</h2>
+        <div class="btns">
+          <button class="primary" onclick="addRow()">+ Add stop</button>
+          <button onclick="exportCSV()">Export CSV</button>
+          <button onclick="exportJSON()">Export JSON</button>
+          <button class="ghost" onclick="resetSeed()">Reset</button>
+        </div>
+      </div>
+      <div class="tablewrap">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th></th><th>Account</th><th>Address</th><th>City</th>
+              <th>Type</th><th>Day</th><th>Delivery window</th><th>Frequency</th><th>Load</th><th>Map</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="legend">Every stop you add or edit is captured automatically. <b>Type</b>: keg accounts (bars/restaurants) vs. case accounts (retail/grocery). No pricing is shown — this is a needs & footprint assessment only.</div>
+    </div>
+
+    <div class="panel maprow">
+      <div class="head"><h2>Route map</h2><div class="byline" style="color:var(--ink-soft);font-size:12px">Brewery = origin ·  drag none, just explore</div></div>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <div class="days" id="days"></div>
+
+  <p class="note" id="milesnote"></p>
+  <p class="note">Origin for all route loops is the Westlake brewery (29305 Clemens Rd). Miles are straight-line, nearest-neighbor sequenced round-trips — directional for footprint discussion, not turn-by-turn. Data autosaves to this browser; use Export to capture it.</p>
+
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+/* ---------- CONFIG ---------- */
+const ORIGIN = {name:"Sibling Revelry Brewery", address:"29305 Clemens Rd", city:"Westlake", lat:41.4586, lng:-81.9560, origin:true};
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const FREQS = ["Weekly","Every 2 wks","2× / week","Monthly","As needed"];
+const TYPES = ["Keg (on-prem)","Case (retail)","Both","—"];
+
+/* ---------- SEED DATA (verified accounts + SRB locations) ---------- */
+/* Days are a SUGGESTED geographic grouping. Windows & loads left blank to capture live. */
+const SEED = [
+  {name:"Sibling Revelry Brewery — Westlake (Origin)", address:"29305 Clemens Rd", city:"Westlake", type:"—", day:"", window:"", freq:"", load:"Production / origin", lat:41.4586, lng:-81.9560, origin:true},
+  {name:"Sibling Revelry Kitchen — Rocky River", address:"19245 Detroit Rd", city:"Rocky River", type:"Both", day:"Mon", window:"", freq:"2× / week", load:"", lat:41.4757, lng:-81.8557},
+  {name:"Heinen's — Rocky River", address:"19219 Detroit Rd", city:"Rocky River", type:"Case (retail)", day:"Mon", window:"", freq:"Weekly", load:"", lat:41.4757, lng:-81.8555},
+  {name:"Around the Corner Saloon", address:"18616 Detroit Ave", city:"Lakewood", type:"Keg (on-prem)", day:"Mon", window:"", freq:"Weekly", load:"", lat:41.4830, lng:-81.8385},
+  {name:"Georgetown", address:"18515 Detroit Ave", city:"Lakewood", type:"Keg (on-prem)", day:"Mon", window:"", freq:"Weekly", load:"", lat:41.4832, lng:-81.8370},
+  {name:"Rozi's Wine House", address:"14900 Detroit Ave", city:"Lakewood", type:"Case (retail)", day:"Mon", window:"", freq:"Weekly", load:"", lat:41.4855, lng:-81.7995},
+  {name:"Buckeye Beer Engine", address:"15315 Madison Ave", city:"Lakewood", type:"Keg (on-prem)", day:"Mon", window:"", freq:"Weekly", load:"", lat:41.4762, lng:-81.7970},
+  {name:"Mahall's Twenty Lanes", address:"13200 Madison Ave", city:"Lakewood", type:"Keg (on-prem)", day:"Mon", window:"", freq:"Weekly", load:"", lat:41.4772, lng:-81.7773},
+  {name:"Heinen's — Avon", address:"35980 Detroit Rd", city:"Avon", type:"Case (retail)", day:"Wed", window:"", freq:"Weekly", load:"", lat:41.4498, lng:-82.0230},
+  {name:"Winking Lizard Tavern — Avon", address:"2125 Center Rd", city:"Avon", type:"Keg (on-prem)", day:"Wed", window:"", freq:"Weekly", load:"", lat:41.4620, lng:-82.0190},
+  {name:"West Park Station", address:"17015 Lorain Ave", city:"Cleveland", type:"Keg (on-prem)", day:"Wed", window:"", freq:"Weekly", load:"", lat:41.4430, lng:-81.8205},
+];
+
+/* ---------- STATE ---------- */
+let STOPS = load() || SEED.map(clone);
+let map, markers=[], lineLayers=[];
+
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function save(){localStorage.setItem("srb_factfind_v2", JSON.stringify(STOPS))}
+function load(){try{const d=localStorage.getItem("srb_factfind_v2");return d?JSON.parse(d):null}catch(e){return null}}
+
+/* ---------- GEO ---------- */
+function haversine(a,b){
+  if(a.lat==null||b.lat==null)return 0;
+  const R=3958.8,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+  const s=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+/* nearest-neighbor loop from origin, returns {order:[stops], miles} */
+function routeLoop(stops){
+  const pts=stops.filter(s=>s.lat!=null);
+  if(!pts.length)return {order:[],miles:0};
+  const remaining=pts.slice();let cur=ORIGIN;const order=[];let miles=0;
+  while(remaining.length){
+    let bi=0,bd=Infinity;
+    for(let i=0;i<remaining.length;i++){const d=haversine(cur,remaining[i]);if(d<bd){bd=d;bi=i}}
+    miles+=bd;cur=remaining[bi];order.push(cur);remaining.splice(bi,1);
+  }
+  miles+=haversine(cur,ORIGIN);
+  return {order,miles};
+}
+
+async function geocode(row){
+  const q=[row.address,row.city,"OH"].filter(Boolean).join(", ");
+  if(!row.address&&!row.city)return;
+  row._geo="wait";render();
+  try{
+    const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q="+encodeURIComponent(q),{headers:{"Accept":"application/json"}});
+    const j=await r.json();
+    if(j&&j[0]){row.lat=+j[0].lat;row.lng=+j[0].lon;row._geo="ok";}
+    else{row._geo="bad";}
+  }catch(e){row._geo="bad";}
+  save();render();drawMap();
+}
+
+/* ---------- RENDER TABLE ---------- */
+function opt(v,sel){return `<option ${v===sel?"selected":""}>${v}</option>`}
+function render(){
+  const tb=document.getElementById("rows");tb.innerHTML="";
+  STOPS.forEach((s,i)=>{
+    const tr=document.createElement("tr");
+    if(s.origin)tr.className="origin";
+    const geo = s.origin?'' :
+      s._geo==="ok"||s.lat!=null?'<span class="geo-ok">●</span>':
+      s._geo==="wait"?'<span class="geo-wait">…</span>':
+      '<span class="geo-bad" onclick="geocode(STOPS['+i+'])">find</span>';
+    tr.innerHTML=`
+      <td><div class="pin">${s.origin?'★':(mapIndex(i))}</div></td>
+      <td class="name"><input value="${esc(s.name)}" onchange="upd(${i},'name',this.value)"></td>
+      <td class="addr"><input value="${esc(s.address||'')}" onchange="upd(${i},'address',this.value,true)"></td>
+      <td><input value="${esc(s.city||'')}" onchange="upd(${i},'city',this.value,true)" style="min-width:90px"></td>
+      <td><select onchange="upd(${i},'type',this.value)" style="min-width:110px">${TYPES.map(t=>opt(t,s.type||"—")).join("")}</select></td>
+      <td><select onchange="upd(${i},'day',this.value)" ${s.origin?'disabled':''} style="min-width:70px"><option ${!s.day?'selected':''}></option>${DAYS.map(d=>opt(d,s.day)).join("")}</select></td>
+      <td><input value="${esc(s.window||'')}" placeholder="e.g. 8–10a" onchange="upd(${i},'window',this.value)" style="min-width:90px"></td>
+      <td><select onchange="upd(${i},'freq',this.value)" ${s.origin?'disabled':''} style="min-width:100px"><option ${!s.freq?'selected':''}></option>${FREQS.map(f=>opt(f,s.freq)).join("")}</select></td>
+      <td><input value="${esc(s.load||'')}" placeholder="e.g. 8 cs / 4 kg" onchange="upd(${i},'load',this.value)" style="min-width:100px"></td>
+      <td style="text-align:center">${geo}</td>
+      <td>${s.origin?'':'<button class="del" title="remove" onclick="delRow('+i+')">×</button>'}</td>`;
+    tb.appendChild(tr);
+  });
+  renderStats();renderDays();
+}
+/* map pin number = position among geocoded non-origin stops */
+function mapIndex(i){
+  let n=0;for(let k=0;k<=i;k++){if(!STOPS[k].origin)n++;}return n;
+}
+function esc(s){return (s==null?'':String(s)).replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+
+function upd(i,k,v,geo){STOPS[i][k]=v;if(geo){STOPS[i].lat=null;STOPS[i].lng=null;STOPS[i]._geo=null;}save();if(geo)geocode(STOPS[i]);else{render();drawMap();}}
+function addRow(){STOPS.push({name:"",address:"",city:"",type:"—",day:"",window:"",freq:"",load:"",lat:null,lng:null});save();render();}
+function delRow(i){STOPS.splice(i,1);save();render();drawMap();}
+function resetSeed(){if(confirm("Clear all entries and reset to starting accounts?")){STOPS=SEED.map(clone);save();render();geocodeAll();drawMap();}}
+
+/* ---------- STATS ---------- */
+function num(n){return n.toLocaleString(undefined,{maximumFractionDigits:0})}
+function renderStats(){
+  const stops=STOPS.filter(s=>!s.origin);
+  const active=new Set(stops.filter(s=>s.day).map(s=>s.day));
+  let weekMiles=0;
+  DAYS.forEach(d=>{weekMiles+=routeLoop(stops.filter(s=>s.day===d)).miles});
+  const kegs=stops.filter(s=>/keg|both/i.test(s.type)).length;
+  const cases=stops.filter(s=>/case|both/i.test(s.type)).length;
+  const el=document.getElementById("stats");
+  el.innerHTML=[
+    ["Delivery stops",num(stops.length)],
+    ["Active route days",num(active.size)],
+    ["Est. weekly miles",num(weekMiles)],
+    ["Keg accounts",num(kegs)],
+    ["Case accounts",num(cases)],
+  ].map(([l,n])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+  document.getElementById("milesnote").textContent =
+    `Across ${active.size} route day(s), the current footprint is ~${num(weekMiles)} straight-line loop miles per week.`;
+}
+
+/* ---------- BY-DAY ---------- */
+function renderDays(){
+  const stops=STOPS.filter(s=>!s.origin);
+  const el=document.getElementById("days");el.innerHTML="";
+  const used=DAYS.filter(d=>stops.some(s=>s.day===d));
+  const list=used.length?used:[];
+  const unscheduled=stops.filter(s=>!s.day);
+  list.forEach(d=>{
+    const ds=stops.filter(s=>s.day===d);
+    const {order,miles}=routeLoop(ds);
+    const seq=order.length?order:ds;
+    el.appendChild(dayCard(d, seq, miles, ds.length));
+  });
+  if(unscheduled.length){
+    const c=document.createElement("div");c.className="day empty";
+    c.innerHTML=`<h3>Unscheduled <span class="meta">${unscheduled.length} stop(s)</span></h3><div class="none">${unscheduled.map(s=>esc(s.name||'(unnamed)')).join(", ")}<br><span style="opacity:.7">— assign a day to route these</span></div>`;
+    el.appendChild(c);
+  }
+  if(!list.length&&!unscheduled.length){
+    el.innerHTML=`<div class="day empty"><h3>No stops yet</h3><div class="none">Add accounts to see route days build.</div></div>`;
+  }
+}
+function dayCard(d,seq,miles,cnt){
+  const c=document.createElement("div");c.className="day";
+  c.innerHTML=`<h3>${d} route <span class="meta">${cnt} stop(s) · ~${num(miles)} mi loop</span></h3>
+    <ol>${seq.map(s=>`<li>${esc(s.name||'(unnamed)')}${badge(s.type)}${s.load?` <span class="ld">— ${esc(s.load)}${s.window?`, ${esc(s.window)}`:''}</span>`:(s.window?` <span class="ld">— ${esc(s.window)}</span>`:'')}</li>`).join("")}</ol>`;
+  return c;
+}
+function badge(t){if(/keg/i.test(t))return '<span class="badge on">keg</span>';if(/case/i.test(t))return '<span class="badge off">case</span>';if(/both/i.test(t))return '<span class="badge on">both</span>';return ''}
+
+/* ---------- MAP ---------- */
+function initMap(){
+  map=new maplibregl.Map({
+    container:"map",
+    style:{version:8,sources:{osm:{type:"raster",tiles:["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png","https://b.tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap"}},layers:[{id:"osm",type:"raster",source:"osm"}]},
+    center:[ORIGIN.lng,ORIGIN.lat],zoom:9.3
+  });
+  map.addControl(new maplibregl.NavigationControl(),"top-right");
+  map.on("load",drawMap);
+}
+function drawMap(){
+  if(!map||!map.isStyleLoaded()){setTimeout(drawMap,150);return;}
+  markers.forEach(m=>m.remove());markers=[];
+  ["rl"].forEach(id=>{if(map.getLayer(id))map.removeLayer(id);if(map.getSource(id))map.removeSource(id);});
+  // origin
+  markers.push(new maplibregl.Marker({color:"#1a1a1c"}).setLngLat([ORIGIN.lng,ORIGIN.lat]).setPopup(new maplibregl.Popup().setHTML(`<b>${ORIGIN.name}</b><br>${ORIGIN.address}`)).addTo(map));
+  const stops=STOPS.filter(s=>!s.origin&&s.lat!=null);
+  let n=0;
+  stops.forEach(s=>{n++;
+    const e=document.createElement("div");e.className="pin";e.style.background="var(--brand)";e.textContent=n;
+    markers.push(new maplibregl.Marker({element:e}).setLngLat([s.lng,s.lat]).setPopup(new maplibregl.Popup().setHTML(`<b>${esc(s.name)}</b><br>${esc(s.address||'')} ${esc(s.city||'')}<br>${esc(s.day||'unscheduled')} · ${esc(s.load||'')}`)).addTo(map));
+  });
+  // route lines per day
+  const feats=[];
+  DAYS.forEach(d=>{
+    const {order}=routeLoop(stops.filter(s=>s.day===d));
+    if(order.length){
+      const coords=[[ORIGIN.lng,ORIGIN.lat],...order.map(s=>[s.lng,s.lat]),[ORIGIN.lng,ORIGIN.lat]];
+      feats.push({type:"Feature",geometry:{type:"LineString",coordinates:coords}});
+    }
+  });
+  if(feats.length){
+    map.addSource("rl",{type:"geojson",data:{type:"FeatureCollection",features:feats}});
+    map.addLayer({id:"rl",type:"line",source:"rl",paint:{"line-color":"#c8102e","line-width":2,"line-opacity":.5,"line-dasharray":[2,1]}});
+  }
+  // fit
+  const all=[[ORIGIN.lng,ORIGIN.lat],...stops.map(s=>[s.lng,s.lat])];
+  if(all.length>1){const b=all.reduce((bb,c)=>bb.extend(c),new maplibregl.LngLatBounds(all[0],all[0]));map.fitBounds(b,{padding:50,maxZoom:12,duration:400});}
+}
+
+/* ---------- EXPORT ---------- */
+function exportCSV(){
+  const cols=["name","address","city","type","day","window","freq","load","lat","lng"];
+  const head=["Account","Address","City","Type","Day","Delivery Window","Frequency","Load","Lat","Lng"];
+  const rows=STOPS.map(s=>cols.map(c=>`"${String(s[c]==null?'':s[c]).replace(/"/g,'""')}"`).join(","));
+  dl("sibling-revelry-factfind.csv","data:text/csv;charset=utf-8,"+encodeURIComponent(head.join(",")+"\n"+rows.join("\n")));
+}
+function exportJSON(){dl("sibling-revelry-factfind.json","data:application/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(STOPS,null,2)));}
+function dl(name,uri){const a=document.createElement("a");a.href=uri;a.download=name;document.body.appendChild(a);a.click();a.remove();}
+
+/* ---------- BOOT ---------- */
+function geocodeAll(){
+  const todo=STOPS.filter(s=>!s.origin&&s.lat==null&&(s.address||s.city));
+  let i=0;(function next(){if(i>=todo.length)return;geocode(todo[i]).then(()=>{i++;setTimeout(next,1100);});})();
+}
+initMap();render();geocodeAll();
+</script>
+</body>
+</html>
